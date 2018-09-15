@@ -47,6 +47,23 @@ func XorOneRune(runeByte byte, srcBytes []byte) []byte {
 	return destBytes
 }
 
+func NextRune(runeBytes []byte) func() byte {
+	var pos int
+	return func() byte {
+		endPos := len(runeBytes) - 1
+		curPos := pos
+		var returnPos int
+		if pos == endPos {
+			pos = 0
+			returnPos = endPos
+		} else {
+			pos++
+			returnPos = curPos
+		}
+		return runeBytes[returnPos]
+	}
+}
+
 func ScoreString(str string) int {
 	scoreMap := make(map[rune]int)
 	scoreMap['E'] = 13
