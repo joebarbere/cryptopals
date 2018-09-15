@@ -14,4 +14,5 @@ func main() {
 	setone.DoChallengeThree()
 	setone.DoChallengeFour()
 	setone.DoChallengeFive()
+	setone.DoChallengeSix()
 }
