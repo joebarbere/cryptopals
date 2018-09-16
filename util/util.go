@@ -3,17 +3,14 @@ package util
 import (
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
+	"io/ioutil"
+	"math/bits"
+	"net/http"
 	"sort"
 	"unicode"
 )
 
 const RUNES = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123456789"
-
-type ScoreKeyValue struct {
-	Key   rune
-	Value int
-}
 
 type CryptopalsResult struct {
 	Key             []rune
@@ -43,35 +40,27 @@ func Xor(a, b []byte) []byte {
 }
 
 func BruteXorOneByte(hexString string) CryptopalsResult {
-	cryptopalsResult := CryptopalsResult{}
+	var cryptopalsResultSlice []CryptopalsResult
 
 	hexBytes, _ := hex.DecodeString(hexString)
-	bruteForceMap := make(map[rune]string)
-	scoresMap := make(map[rune]int)
+
 	for _, r := range RUNES {
-		runeByte := []byte(string(r))[0]
-		decrypted := string(XorOneByte(runeByte, hexBytes))
-		bruteForceMap[r] = decrypted
-		scoresMap[r] = ScoreString(decrypted)
+		cryptopalsResult := CryptopalsResult{}
+		key := []byte(string(r))[0]
+		decryptedString := string(XorOneByte(key, hexBytes))
+		cryptopalsResult.Key = []rune{r}
+		cryptopalsResult.DecryptedString = decryptedString
+		cryptopalsResult.Score = ScoreString(decryptedString)
+		cryptopalsResultSlice = append(cryptopalsResultSlice, cryptopalsResult)
 	}
 
-	var scoresSlice []ScoreKeyValue
-	for k, v := range scoresMap {
-		scoresSlice = append(scoresSlice, ScoreKeyValue{Key: k, Value: v})
-	}
-
-	sort.Slice(scoresSlice, func(i, j int) bool {
-		return scoresSlice[i].Value > scoresSlice[j].Value
+	sort.Slice(cryptopalsResultSlice, func(i, j int) bool {
+		return cryptopalsResultSlice[i].Score > cryptopalsResultSlice[j].Score
 	})
 
-	topScoredRune := scoresSlice[0].Key
-	topScore := scoresSlice[0].Value
-	cryptopalsResult.Key = []rune{topScoredRune}
-	cryptopalsResult.EncryptedString = hexString
-	cryptopalsResult.DecryptedString = bruteForceMap[topScoredRune]
-	cryptopalsResult.Score = topScore
+	cryptopalsResultSlice[0].EncryptedString = hexString
 
-	return cryptopalsResult
+	return cryptopalsResultSlice[0]
 }
 
 func XorHexStrings(hexString1, hexString2 string) string {
@@ -149,15 +138,34 @@ func ScoreString(str string) int {
 	return score
 }
 
-func GetHammingDistance(s1, s2 string) (int, error) {
-	if len(s1) != len(s2) {
-		return 0, errors.New("ERROR:  Strings are of different lengths")
+func HammingDistanceBytes(b1, b2 []byte) int {
+	distance := 0
+	for i, b := range b1 {
+		distance += HammingDistanceByte(b, b2[i])
 	}
-	var differences int
-	for i, x := range s1 {
-		if string(x) != string(s2[i]) {
-			differences++
-		}
+	return distance
+}
+
+func HammingDistanceByte(b1, b2 byte) int {
+	return CountBitsInByte(b1 ^ b2)
+}
+
+func CountBitsInByte(b byte) int {
+	return bits.OnesCount(uint(b))
+}
+
+func GetCryptopalsData(url string) string {
+	response, err := http.Get(url)
+	if err != nil {
+		panic(err)
 	}
-	return differences, nil
+	defer response.Body.Close()
+
+	responseData, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		panic(err)
+	}
+
+	responseString := string(responseData)
+	return responseString
 }
