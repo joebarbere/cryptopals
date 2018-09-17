@@ -2,7 +2,10 @@ package setone
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/base64"
 	"fmt"
+	"sort"
 	"strings"
 
 	"../util"
@@ -22,12 +25,35 @@ func DoChallengeSix() {
 	url := "https://cryptopals.com/static/challenge-data/6.txt"
 
 	responseString := util.GetCryptopalsData(url)
+	//fmt.Print(responseString)
 
 	scanner := bufio.NewScanner(strings.NewReader(responseString))
 	scanner.Split(bufio.ScanLines)
+	var buffer bytes.Buffer
 	for scanner.Scan() {
 		line := scanner.Text()
-		fmt.Println(line)
+		buffer.WriteString(line)
+		//fmt.Print("... ")
+		//fmt.Println(line)
 	}
+	cipherTextBase64Encoded := buffer.String()
+	//fmt.Println(cipherTextBase64Encoded)
+	cipherTextBytes, _ := base64.StdEncoding.DecodeString(cipherTextBase64Encoded)
+
+	var keySizeHammingDistanceSlice []util.KeySizeHammingDistance
+	for keysize := 2; keysize <= 40; keysize++ {
+		bytes1 := cipherTextBytes[:keysize]
+		bytes2 := cipherTextBytes[keysize : keysize*2]
+		distance := util.HammingDistanceBytes(bytes1, bytes2)
+		normalizedDistance := float64(distance) / float64(keysize)
+		fmt.Println("keysize: ", keysize, "distance: ", distance, "normalized distance: ", normalizedDistance)
+		keySizeHammingDistanceSlice = append(keySizeHammingDistanceSlice, util.KeySizeHammingDistance{KeySize: keysize, HammingDistance: normalizedDistance})
+	}
+
+	sort.Slice(keySizeHammingDistanceSlice, func(i, j int) bool {
+		return keySizeHammingDistanceSlice[i].HammingDistance < keySizeHammingDistanceSlice[j].HammingDistance
+	})
+
+	fmt.Println("lowest distance: ", keySizeHammingDistanceSlice[0].HammingDistance, "for keysize: ", keySizeHammingDistanceSlice[0].KeySize)
 
 }

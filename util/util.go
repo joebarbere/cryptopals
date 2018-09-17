@@ -19,6 +19,11 @@ type CryptopalsResult struct {
 	DecryptedString string
 }
 
+type KeySizeHammingDistance struct {
+	KeySize         int
+	HammingDistance float64
+}
+
 func HexToBase64(hexString string) string {
 	hexBytes, err := hex.DecodeString(hexString)
 	if err != nil {
@@ -80,20 +85,17 @@ func XorOneByte(key byte, srcBytes []byte) []byte {
 	return destBytes
 }
 
-func NextByte(key []byte) func() byte {
+func NextByteOfRepeatingKey(key []byte) func() byte {
 	var pos int
 	return func() byte {
 		endPos := len(key) - 1
 		curPos := pos
-		var returnPos int
-		if pos == endPos {
+		if curPos == endPos {
 			pos = 0
-			returnPos = endPos
 		} else {
 			pos++
-			returnPos = curPos
 		}
-		return key[returnPos]
+		return key[curPos]
 	}
 }
 
@@ -104,11 +106,11 @@ func RepeatingKeyXorString(key, message string) string {
 }
 
 func RepeatingKeyXor(key, message string) []byte {
-	f := NextByte([]byte(key))
+	fNextByteOfRepeatingKey := NextByteOfRepeatingKey([]byte(key))
 	encryptedBytes := make([]byte, len(message))
 	for i, r := range message {
-		x := f()
-		encryptedBytes[i] = byte(r) ^ x
+		nextByte := fNextByteOfRepeatingKey()
+		encryptedBytes[i] = byte(r) ^ nextByte
 	}
 	return encryptedBytes
 }
